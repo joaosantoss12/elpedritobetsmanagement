@@ -11,9 +11,10 @@ interface BetData {
   active: boolean;
   price: number | string;
   image_url: string | null;
+  markets: string; // <-- NOVO CAMPO ADICIONADO
 }
 
-// --- Estilos CSS em Objetos (para um visual moderno) ---
+// --- Estilos CSS em Objetos ---
 const styles = {
   body: {
     backgroundColor: '#f4f7f6',
@@ -124,7 +125,7 @@ const styles = {
   },
   submitBtn: {
     padding: '14px 20px',
-    backgroundColor: '#3b82f6', // Azul moderno
+    backgroundColor: '#3b82f6', 
     color: 'white',
     border: 'none',
     borderRadius: '8px',
@@ -170,7 +171,6 @@ function App() {
   const [saving, setSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Focus effect para os inputs (simula o :focus do CSS)
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = styles.submitBtn.backgroundColor;
     e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
@@ -229,11 +229,9 @@ function App() {
       let finalImageUrl = formData.image_url;
 
       if (imageFile) {
-        // CORREÇÃO: Limpar espaços e caracteres especiais do nome do ficheiro
         const cleanFileName = imageFile.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
         const fileName = `bet_${Date.now()}_${cleanFileName}`;
 
-        // Upload para o bucket 'bets'
         const { error: uploadError } = await supabase.storage
           .from('bets')
           .upload(fileName, imageFile, {
@@ -243,7 +241,6 @@ function App() {
 
         if (uploadError) throw uploadError;
 
-        // Gerar o URL Público (Requer que o bucket seja PÚBLICO no Supabase)
         const { data: publicUrlData } = supabase.storage
           .from('bets')
           .getPublicUrl(fileName);
@@ -253,7 +250,6 @@ function App() {
         finalImageUrl = publicUrlData.publicUrl;
       }
 
-      // Atualizar a tabela 'picks'
       const { error: updateError } = await supabase
         .from('picks') 
         .update({
@@ -261,8 +257,8 @@ function App() {
           bet: formData.bet,
           odd: formData.odd,
           analysis: formData.analysis,
+          markets: formData.markets, // <-- NOVO CAMPO ADICIONADO AO UPDATE
           active: formData.active,
-          // Garante que é número ou 0 se vazio
           price: formData.price === '' || formData.price === undefined ? 0 : Number(formData.price), 
           image_url: finalImageUrl,
         })
@@ -272,11 +268,9 @@ function App() {
 
       setMessage({ text: 'Alterações guardadas com sucesso!', type: 'success' });
       
-      // Atualiza o estado local para refletir a nova imagem
       setFormData((prev) => ({ ...prev, image_url: finalImageUrl }));
-      setImageFile(null); // Limpa o input de ficheiro
+      setImageFile(null); 
       
-      // Limpa a mensagem de sucesso após 4 segundos
       setTimeout(() => setMessage(null), 4000);
 
     } catch (error: any) {
@@ -375,6 +369,20 @@ function App() {
             </div>
           </div>
 
+          {/* NOVO CAMPO: MERCADOS */}
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Mercados</label>
+            <textarea 
+              name="markets" 
+              value={formData.markets || ''} 
+              onChange={handleInputChange} 
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              style={{...styles.textarea, minHeight: '80px'}} 
+              placeholder="Ex: Resultado Final, Mais de 2.5 Golos, Ambas Marcam..."
+            />
+          </div>
+
           <div style={styles.inputGroup}>
             <label style={styles.label}>Análise Detalhada (Opcional)</label>
             <textarea 
@@ -405,7 +413,7 @@ function App() {
               {formData.image_url ? (
                 <div>
                   <img 
-                    key={formData.image_url} // CORREÇÃO: Força o reload da imagem se o URL mudar
+                    key={formData.image_url}
                     src={formData.image_url} 
                     alt="Previsualização da aposta" 
                     style={styles.currentImage} 
