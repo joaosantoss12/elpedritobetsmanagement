@@ -140,6 +140,20 @@ const styles = {
     fontSize: '15px',
     fontWeight: 500,
   },
+  toast: {
+    position: 'fixed' as const,
+    bottom: '24px',
+    right: '24px',
+    padding: '14px 20px',
+    borderRadius: '10px',
+    fontSize: '15px',
+    fontWeight: 500,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+    zIndex: 9999,
+    minWidth: '260px',
+    maxWidth: '360px',
+    animation: 'fadeInUp 0.2s ease',
+  },
   successMessage: {
     backgroundColor: '#ecfdf5',
     color: '#065f46',
@@ -269,17 +283,20 @@ function SellerForm({ seller }: { seller: Seller }) {
   };
 
   const submitStyle = {
-    ...styles.message,
-    padding: '14px 20px',
+    position: 'fixed' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: '16px 20px',
     backgroundColor: saving ? '#d1d5db' : color,
     color: 'white',
     border: 'none',
-    borderRadius: '8px',
     fontSize: '16px',
     fontWeight: 600,
     cursor: saving ? 'not-allowed' : 'pointer',
     transition: 'background-color 0.2s',
-    marginTop: '10px',
+    zIndex: 1000,
+    boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
   };
 
   if (loading) return <div style={styles.loading}>A carregar dados...</div>;
@@ -287,13 +304,13 @@ function SellerForm({ seller }: { seller: Seller }) {
   return (
     <>
       {message && (
-        <div style={{ ...styles.message, ...(message.type === 'success' ? styles.successMessage : styles.errorMessage) }}>
+        <div style={{ ...styles.toast, ...(message.type === 'success' ? styles.successMessage : styles.errorMessage) }}>
           {message.type === 'success' ? '✓ ' : '✕ '}
           {message.text}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleSubmit} style={{ ...styles.form, paddingBottom: '80px' }}>
         <div style={styles.inputGroup}>
           <label style={styles.label}>Nome do Jogo / Evento</label>
           <input
