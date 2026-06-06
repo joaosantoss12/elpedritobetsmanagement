@@ -284,19 +284,22 @@ function SellerForm({ seller }: { seller: Seller }) {
 
   const submitStyle = {
     position: 'fixed' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: '16px 20px',
-    backgroundColor: saving ? '#d1d5db' : color,
-    color: 'white',
-    border: 'none',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '700px',
+    maxWidth: 'calc(100vw - 40px)',
+    padding: '14px 20px',
+    backgroundColor: saving ? '#d1d5db' : `${color}22`,
+    color: saving ? '#999' : color,
+    border: `2px solid ${saving ? '#d1d5db' : color}`,
+    borderRadius: '10px',
     fontSize: '16px',
     fontWeight: 600,
     cursor: saving ? 'not-allowed' : 'pointer',
-    transition: 'background-color 0.2s',
+    transition: 'background-color 0.2s, color 0.2s',
     zIndex: 1000,
-    boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
   };
 
   if (loading) return <div style={styles.loading}>A carregar dados...</div>;
@@ -436,8 +439,8 @@ function SellerForm({ seller }: { seller: Seller }) {
           type="submit"
           disabled={saving}
           style={submitStyle}
-          onMouseOver={(e) => !saving && (e.currentTarget.style.backgroundColor = color + 'cc')}
-          onMouseOut={(e) => !saving && (e.currentTarget.style.backgroundColor = color)}
+          onMouseOver={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = 'white'; } }}
+          onMouseOut={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = `${color}22`; e.currentTarget.style.color = color; } }}
         >
           {saving ? 'A guardar alterações...' : 'Guardar Dados da Aposta'}
         </button>
