@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
+type Seller = 'pedrito' | 'rodrigo' | 'magnata';
+
 interface BetData {
   id: number;
   game: string;
@@ -11,10 +13,22 @@ interface BetData {
   active: boolean;
   price: number | string;
   image_url: string | null;
-  markets: string; // <-- NOVO CAMPO ADICIONADO
+  markets: string;
+  seller: Seller;
 }
 
-// --- Estilos CSS em Objetos ---
+const TABS: { key: Seller; label: string }[] = [
+  { key: 'pedrito', label: 'El Pedrito' },
+  { key: 'rodrigo', label: 'Rodrigo' },
+  { key: 'magnata', label: 'Magnata' },
+];
+
+const TAB_COLOR: Record<Seller, string> = {
+  pedrito: '#3b82f6',
+  rodrigo: '#8b5cf6',
+  magnata: '#f59e0b',
+};
+
 const styles = {
   body: {
     backgroundColor: '#f4f7f6',
@@ -33,28 +47,24 @@ const styles = {
     padding: '40px',
     borderRadius: '16px',
     boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+    alignSelf: 'flex-start',
   },
   header: {
     borderBottom: '2px solid #eaeaea',
     paddingBottom: '20px',
-    marginBottom: '30px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: '24px',
+    textAlign: 'center' as const,
   },
   title: {
-    margin: 0,
+    margin: '0 0 20px 0',
     fontSize: '24px',
     fontWeight: 700,
     color: '#1a1a1a',
   },
-  idBadge: {
-    backgroundColor: '#e1e8ed',
-    color: '#1a1a1a',
-    padding: '4px 12px',
-    borderRadius: '20px',
-    fontSize: '14px',
-    fontWeight: 600,
+  tabBar: {
+    display: 'flex',
+    gap: '8px',
+    justifyContent: 'center',
   },
   form: {
     display: 'flex',
@@ -117,27 +127,11 @@ const styles = {
     borderRadius: '8px',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
     marginBottom: '15px',
-    border: '1px solid #eee'
+    border: '1px solid #eee',
   },
   fileInput: {
     fontSize: '14px',
     color: '#555',
-  },
-  submitBtn: {
-    padding: '14px 20px',
-    backgroundColor: '#3b82f6', 
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    marginTop: '10px',
-  },
-  submitBtnDisabled: {
-    backgroundColor: '#a3bffa',
-    cursor: 'not-allowed',
   },
   message: {
     padding: '15px',
@@ -160,37 +154,41 @@ const styles = {
     fontSize: '18px',
     color: '#666',
     textAlign: 'center' as const,
-    marginTop: '50px'
-  }
+    marginTop: '50px',
+  },
 };
 
-function App() {
+function SellerForm({ seller }: { seller: Seller }) {
+  const color = TAB_COLOR[seller];
   const [formData, setFormData] = useState<Partial<BetData>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = styles.submitBtn.backgroundColor;
-    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+    e.target.style.borderColor = color;
+    e.target.style.boxShadow = `0 0 0 3px ${color}22`;
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = styles.input.border;
+    e.target.style.borderColor = '#ddd';
     e.target.style.boxShadow = 'none';
   };
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [seller]);
 
   const fetchData = async () => {
     setLoading(true);
+    setMessage(null);
     const { data, error } = await supabase
-      .from('picks') 
+      .from('picks')
       .select('*')
-      .eq('id', 1)
+      .eq('seller', seller)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (error) {
@@ -204,13 +202,11 @@ function App() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({ ...prev, [name]: checked }));
       return;
     }
-
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -230,223 +226,245 @@ function App() {
 
       if (imageFile) {
         const cleanFileName = imageFile.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-        const fileName = `bet_${Date.now()}_${cleanFileName}`;
+        const fileName = `bet_${seller}_${Date.now()}_${cleanFileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('bets')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
 
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage
-          .from('bets')
-          .getPublicUrl(fileName);
-        
-        if (!publicUrlData.publicUrl) throw new Error("Falha ao gerar URL público.");
-
+        const { data: publicUrlData } = supabase.storage.from('bets').getPublicUrl(fileName);
+        if (!publicUrlData.publicUrl) throw new Error('Falha ao gerar URL público.');
         finalImageUrl = publicUrlData.publicUrl;
       }
 
       const { error: updateError } = await supabase
-        .from('picks') 
+        .from('picks')
         .update({
           game: formData.game,
           bet: formData.bet,
           odd: formData.odd,
           analysis: formData.analysis,
-          markets: formData.markets, // <-- NOVO CAMPO ADICIONADO AO UPDATE
+          markets: formData.markets,
           active: formData.active,
-          price: formData.price === '' || formData.price === undefined ? 0 : Number(formData.price), 
+          price: formData.price === '' || formData.price === undefined ? 0 : Number(formData.price),
           image_url: finalImageUrl,
         })
-        .eq('id', 1);
+        .eq('id', formData.id);
 
       if (updateError) throw updateError;
 
       setMessage({ text: 'Alterações guardadas com sucesso!', type: 'success' });
-      
       setFormData((prev) => ({ ...prev, image_url: finalImageUrl }));
-      setImageFile(null); 
-      
+      setImageFile(null);
       setTimeout(() => setMessage(null), 4000);
-
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Ocorreu um erro ao tentar guardar os dados.';
       console.error('Falha na atualização:', error);
-      setMessage({ text: error.message || 'Ocorreu um erro ao tentar guardar os dados.', type: 'error' });
+      setMessage({ text: msg, type: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div style={styles.body}><div style={styles.loading}>A carregar dados...</div></div>;
+  const submitStyle = {
+    ...styles.message,
+    padding: '14px 20px',
+    backgroundColor: saving ? '#d1d5db' : color,
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: 600,
+    cursor: saving ? 'not-allowed' : 'pointer',
+    transition: 'background-color 0.2s',
+    marginTop: '10px',
+  };
 
-  const combinedSubmitStyle = saving 
-    ? { ...styles.submitBtn, ...styles.submitBtnDisabled } 
-    : styles.submitBtn;
+  if (loading) return <div style={styles.loading}>A carregar dados...</div>;
+
+  return (
+    <>
+      {message && (
+        <div style={{ ...styles.message, ...(message.type === 'success' ? styles.successMessage : styles.errorMessage) }}>
+          {message.type === 'success' ? '✓ ' : '✕ '}
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Nome do Jogo / Evento</label>
+          <input
+            type="text"
+            name="game"
+            value={formData.game || ''}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={styles.input}
+            placeholder="Ex: Benfica vs Porto"
+            required
+          />
+        </div>
+
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Descrição da Aposta</label>
+          <textarea
+            name="bet"
+            value={formData.bet || ''}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={styles.textarea}
+            placeholder="Descreva as seleções da aposta..."
+            required
+          />
+        </div>
+
+        <div style={styles.row}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Odd (ex: 1.54)</label>
+            <input
+              type="text"
+              name="odd"
+              value={formData.odd || ''}
+              onChange={handleInputChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              style={styles.input}
+              placeholder="Ex: 2.50"
+              required
+            />
+          </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Preço (ex: 5.99)</label>
+            <input
+              type="number"
+              name="price"
+              value={formData.price ?? ''}
+              onChange={handleInputChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              style={styles.input}
+              placeholder="0.00"
+              step="0.01"
+              required
+            />
+          </div>
+        </div>
+
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Mercados</label>
+          <textarea
+            name="markets"
+            value={formData.markets || ''}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={{ ...styles.textarea, minHeight: '80px' }}
+            placeholder="Ex: Resultado Final, Mais de 2.5 Golos, Ambas Marcam..."
+          />
+        </div>
+
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Análise Detalhada (Opcional)</label>
+          <textarea
+            name="analysis"
+            value={formData.analysis || ''}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={{ ...styles.textarea, minHeight: '140px' }}
+            placeholder="Escreva a justificação para esta aposta..."
+          />
+        </div>
+
+        <label style={styles.checkboxContainer}>
+          <input
+            type="checkbox"
+            name="active"
+            checked={formData.active || false}
+            onChange={handleInputChange}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span style={{ ...styles.label, color: '#1a1a1a', textAlign: 'left' }}>Esta aposta está ativa e visível?<br></br>[quando começar o jogo ou acabar o período de venda, desativar]</span>
+        </label>
+
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Imagem do Bilhete</label>
+          <div style={styles.imageSection}>
+            {formData.image_url ? (
+              <div>
+                <img
+                  key={formData.image_url}
+                  src={formData.image_url}
+                  alt="Previsualização da aposta"
+                  style={styles.currentImage}
+                />
+                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 15px 0' }}>Imagem atual carregada.</p>
+              </div>
+            ) : (
+              <div style={{ padding: '20px 0', color: '#999' }}>Nenhuma imagem carregada.</div>
+            )}
+            <div style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <label style={{ ...styles.label, display: 'block', marginBottom: '10px', color }}>Alterar Imagem</label>
+              <input type="file" accept="image/*" onChange={handleFileChange} style={styles.fileInput} />
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving}
+          style={submitStyle}
+          onMouseOver={(e) => !saving && (e.currentTarget.style.backgroundColor = color + 'cc')}
+          onMouseOut={(e) => !saving && (e.currentTarget.style.backgroundColor = color)}
+        >
+          {saving ? 'A guardar alterações...' : 'Guardar Dados da Aposta'}
+        </button>
+      </form>
+    </>
+  );
+}
+
+function App() {
+  const [activeTab, setActiveTab] = useState<Seller>('pedrito');
 
   return (
     <div style={styles.body}>
       <div style={styles.container}>
         <div style={styles.header}>
-          <h2 style={styles.title}>Painel de Edição</h2>
-          <span style={styles.idBadge}>Registo ID: 1</span>
+          <h2 style={styles.title}>Painel de Edição -- Apostas</h2>
+          <div style={styles.tabBar}>
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.key;
+              const color = TAB_COLOR[tab.key];
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '8px',
+                    border: isActive ? `2px solid ${color}` : '2px solid #eaeaea',
+                    backgroundColor: isActive ? color : '#f9f9f9',
+                    color: isActive ? '#fff' : '#555',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        
-        {message && (
-          <div style={{ 
-            ...styles.message, 
-            ...(message.type === 'success' ? styles.successMessage : styles.errorMessage) 
-          }}>
-            {message.type === 'success' ? '✓ ' : '✕ '}
-            {message.text}
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Nome do Jogo / Evento</label>
-            <input 
-              type="text" 
-              name="game" 
-              value={formData.game || ''} 
-              onChange={handleInputChange} 
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={styles.input} 
-              placeholder="Ex: Benfica vs Porto"
-              required 
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Descrição da Aposta</label>
-            <textarea 
-              name="bet" 
-              value={formData.bet || ''} 
-              onChange={handleInputChange} 
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={styles.textarea} 
-              placeholder="Descreva as seleções da aposta..."
-              required 
-            />
-          </div>
-
-          <div style={styles.row}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Odd (Cota total)</label>
-              <input 
-                type="text" 
-                name="odd" 
-                value={formData.odd || ''} 
-                onChange={handleInputChange} 
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                style={styles.input} 
-                placeholder="Ex: 2.50"
-                required 
-              />
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Preço (€)</label>
-              <input 
-                type="number" 
-                name="price" 
-                value={formData.price ?? ''} 
-                onChange={handleInputChange} 
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                style={styles.input} 
-                placeholder="0.00"
-                step="0.01"
-                required 
-              />
-            </div>
-          </div>
-
-          {/* NOVO CAMPO: MERCADOS */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Mercados</label>
-            <textarea 
-              name="markets" 
-              value={formData.markets || ''} 
-              onChange={handleInputChange} 
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={{...styles.textarea, minHeight: '80px'}} 
-              placeholder="Ex: Resultado Final, Mais de 2.5 Golos, Ambas Marcam..."
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Análise Detalhada (Opcional)</label>
-            <textarea 
-              name="analysis" 
-              value={formData.analysis || ''} 
-              onChange={handleInputChange} 
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={{...styles.textarea, minHeight: '140px'}} 
-              placeholder="Escreva a justificação para esta aposta..."
-            />
-          </div>
-
-          <label style={styles.checkboxContainer}>
-            <input 
-              type="checkbox" 
-              name="active" 
-              checked={formData.active || false} 
-              onChange={handleInputChange} 
-              style={{width: '18px', height: '18px', cursor: 'pointer'}}
-            />
-            <span style={{...styles.label, color: '#1a1a1a'}}>Esta aposta está ativa e visível?</span>
-          </label>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Imagem do Bilhete</label>
-            <div style={styles.imageSection}>
-              {formData.image_url ? (
-                <div>
-                  <img 
-                    key={formData.image_url}
-                    src={formData.image_url} 
-                    alt="Previsualização da aposta" 
-                    style={styles.currentImage} 
-                  />
-                  <p style={{fontSize: '12px', color: '#888', margin: '0 0 15px 0'}}>Imagem atual carregada.</p>
-                </div>
-              ) : (
-                <div style={{padding: '20px 0', color: '#999'}}>Nenhuma imagem carregada.</div>
-              )}
-              
-              <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
-                <label style={{...styles.label, display:'block', marginBottom:'10px', color: '#3b82f6'}}>Alterar Imagem</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  style={styles.fileInput}
-                />
-              </div>
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={saving} 
-            style={combinedSubmitStyle}
-            onMouseOver={(e) => !saving && (e.currentTarget.style.backgroundColor = '#2563eb')}
-            onMouseOut={(e) => !saving && (e.currentTarget.style.backgroundColor = '#3b82f6')}
-          >
-            {saving ? 'A guardar alterações...' : 'Guardar Dados da Aposta'}
-          </button>
-
-        </form>
+        <SellerForm key={activeTab} seller={activeTab} />
       </div>
     </div>
   );
