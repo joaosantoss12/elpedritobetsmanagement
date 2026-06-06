@@ -290,8 +290,8 @@ function SellerForm({ seller }: { seller: Seller }) {
     width: '700px',
     maxWidth: 'calc(100vw - 40px)',
     padding: '14px 20px',
-    backgroundColor: saving ? '#d1d5db' : `${color}22`,
-    color: saving ? '#999' : color,
+    backgroundColor: saving ? '#d1d5db' : `${color}e6`,
+    color: saving ? '#999' : 'white',
     border: `2px solid ${saving ? '#d1d5db' : color}`,
     borderRadius: '10px',
     fontSize: '16px',
@@ -440,7 +440,7 @@ function SellerForm({ seller }: { seller: Seller }) {
           disabled={saving}
           style={submitStyle}
           onMouseOver={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = 'white'; } }}
-          onMouseOut={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = `${color}22`; e.currentTarget.style.color = color; } }}
+          onMouseOut={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = `${color}e6`; e.currentTarget.style.color = 'white'; } }}
         >
           {saving ? 'A guardar alterações...' : 'Guardar Dados da Aposta'}
         </button>
