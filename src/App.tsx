@@ -1,8 +1,9 @@
 // src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
+import './App.css';
 
-type Seller = 'pedrito' | 'rodrigo' | 'magnata';
+type Seller = 'pedrito' | 'goja' | 'tipster';
 
 interface BetData {
   id: number;
@@ -17,181 +18,22 @@ interface BetData {
   seller: Seller;
 }
 
-const TABS: { key: Seller; label: string }[] = [
-  { key: 'pedrito', label: 'El Pedrito' },
-  { key: 'rodrigo', label: 'Rodrigo' },
-  { key: 'magnata', label: 'Magnata' },
+const TABS: { key: Seller; label: string; color: string }[] = [
+  { key: 'pedrito', label: 'El Pedrito', color: '#EAB308' },
+  { key: 'goja', label: 'Goja', color: '#38BDF8' },
+  { key: 'tipster', label: 'Tipster do Pedrito', color: '#A78BFA' },
 ];
 
-const TAB_COLOR: Record<Seller, string> = {
-  pedrito: '#3b82f6',
-  rodrigo: '#8b5cf6',
-  magnata: '#f59e0b',
-};
-
-const styles = {
-  body: {
-    backgroundColor: '#f4f7f6',
-    margin: 0,
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-    color: '#333',
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '40px 20px',
-  },
-  container: {
-    backgroundColor: '#ffffff',
-    maxWidth: '700px',
-    width: '100%',
-    padding: '40px',
-    borderRadius: '16px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-    alignSelf: 'flex-start',
-  },
-  header: {
-    borderBottom: '2px solid #eaeaea',
-    paddingBottom: '20px',
-    marginBottom: '24px',
-    textAlign: 'center' as const,
-  },
-  title: {
-    margin: '0 0 20px 0',
-    fontSize: '24px',
-    fontWeight: 700,
-    color: '#1a1a1a',
-  },
-  tabBar: {
-    display: 'flex',
-    gap: '8px',
-    justifyContent: 'center',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '20px',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '8px',
-  },
-  label: {
-    fontWeight: 600,
-    fontSize: '14px',
-    color: '#555',
-  },
-  input: {
-    padding: '12px 15px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '16px',
-    transition: 'border-color 0.2s',
-  },
-  textarea: {
-    padding: '12px 15px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '16px',
-    minHeight: '100px',
-    resize: 'vertical' as const,
-    fontFamily: 'inherit',
-  },
-  row: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-  },
-  checkboxContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    backgroundColor: '#f9f9f9',
-    padding: '15px',
-    borderRadius: '8px',
-    border: '1px solid #eee',
-    marginTop: '10px',
-    cursor: 'pointer',
-  },
-  imageSection: {
-    border: '2px dashed #ddd',
-    padding: '25px',
-    borderRadius: '12px',
-    backgroundColor: '#fafafa',
-    marginTop: '10px',
-    textAlign: 'center' as const,
-  },
-  currentImage: {
-    maxWidth: '100%',
-    maxHeight: '180px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    marginBottom: '15px',
-    border: '1px solid #eee',
-  },
-  fileInput: {
-    fontSize: '14px',
-    color: '#555',
-  },
-  message: {
-    padding: '15px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    fontSize: '15px',
-    fontWeight: 500,
-  },
-  toast: {
-    position: 'fixed' as const,
-    bottom: '24px',
-    right: '24px',
-    padding: '14px 20px',
-    borderRadius: '10px',
-    fontSize: '15px',
-    fontWeight: 500,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-    zIndex: 9999,
-    minWidth: '260px',
-    maxWidth: '360px',
-    animation: 'fadeInUp 0.2s ease',
-  },
-  successMessage: {
-    backgroundColor: '#ecfdf5',
-    color: '#065f46',
-    border: '1px solid #a7f3d0',
-  },
-  errorMessage: {
-    backgroundColor: '#fff1f2',
-    color: '#9f1239',
-    border: '1px solid #fecdd3',
-  },
-  loading: {
-    fontSize: '18px',
-    color: '#666',
-    textAlign: 'center' as const,
-    marginTop: '50px',
-  },
-};
-
-function SellerForm({ seller }: { seller: Seller }) {
-  const color = TAB_COLOR[seller];
+function SellerForm({ seller, color }: { seller: Seller; color: string }) {
   const [formData, setFormData] = useState<Partial<BetData>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = color;
-    e.target.style.boxShadow = `0 0 0 3px ${color}22`;
-  };
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#ddd';
-    e.target.style.boxShadow = 'none';
-  };
-
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seller]);
 
   const fetchData = async () => {
@@ -282,209 +124,201 @@ function SellerForm({ seller }: { seller: Seller }) {
     }
   };
 
-  const submitStyle = {
-    position: 'fixed' as const,
-    bottom: '24px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '700px',
-    maxWidth: 'calc(100vw - 40px)',
-    padding: '14px 20px',
-    backgroundColor: saving ? '#d1d5db' : `${color}e6`,
-    color: saving ? '#999' : 'white',
-    border: `2px solid ${saving ? '#d1d5db' : color}`,
-    borderRadius: '10px',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: saving ? 'not-allowed' : 'pointer',
-    transition: 'background-color 0.2s, color 0.2s',
-    zIndex: 1000,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-  };
+  const cssVars = { '--tab-color': color } as React.CSSProperties;
 
-  if (loading) return <div style={styles.loading}>A carregar dados...</div>;
+  if (loading) {
+    return (
+      <div className="card" style={cssVars}>
+        <div className="loading">
+          <span className="spinner" />
+          A carregar dados...
+        </div>
+      </div>
+    );
+  }
+
+  const active = formData.active ?? false;
 
   return (
     <>
       {message && (
-        <div style={{ ...styles.toast, ...(message.type === 'success' ? styles.successMessage : styles.errorMessage) }}>
-          {message.type === 'success' ? '✓ ' : '✕ '}
+        <div className={`toast ${message.type}`}>
+          <span className="toast-badge">{message.type === 'success' ? '✓' : '✕'}</span>
           {message.text}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ ...styles.form, paddingBottom: '80px' }}>
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Nome do Jogo / Evento</label>
-          <input
-            type="text"
-            name="game"
-            value={formData.game || ''}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            style={styles.input}
-            placeholder="Ex: Benfica vs Porto"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="card" style={cssVars}>
+        <div className="card-strip" />
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Descrição da Aposta</label>
-          <textarea
-            name="bet"
-            value={formData.bet || ''}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            style={styles.textarea}
-            placeholder="Descreva as seleções da aposta..."
-            required
-          />
-        </div>
-
-        <div style={styles.row}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Odd (ex: 1.54)</label>
+        <div className="form">
+          <div className="field">
+            <label className="field-label">Nome do Jogo / Evento</label>
             <input
+              className="input"
               type="text"
-              name="odd"
-              value={formData.odd || ''}
+              name="game"
+              value={formData.game || ''}
               onChange={handleInputChange}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={styles.input}
-              placeholder="Ex: 2.50"
+              placeholder="Ex: Benfica vs Porto"
               required
             />
           </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Preço (ex: 5.99)</label>
-            <input
-              type="number"
-              name="price"
-              value={formData.price ?? ''}
+
+          <div className="field">
+            <label className="field-label">Descrição da Aposta</label>
+            <textarea
+              className="textarea"
+              name="bet"
+              value={formData.bet || ''}
               onChange={handleInputChange}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              style={styles.input}
-              placeholder="0.00"
-              step="0.01"
+              placeholder="Descreve as seleções da aposta..."
               required
             />
           </div>
-        </div>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Mercados</label>
-          <textarea
-            name="markets"
-            value={formData.markets || ''}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            style={{ ...styles.textarea, minHeight: '80px' }}
-            placeholder="Ex: Resultado Final, Mais de 2.5 Golos, Ambas Marcam..."
-          />
-        </div>
+          <div className="row">
+            <div className="field">
+              <label className="field-label">Odd</label>
+              <input
+                className="input"
+                type="text"
+                name="odd"
+                value={formData.odd || ''}
+                onChange={handleInputChange}
+                placeholder="Ex: 2.50"
+                required
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Preço</label>
+              <div className="input-affix">
+                <input
+                  className="input"
+                  type="number"
+                  name="price"
+                  value={formData.price ?? ''}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  step="0.01"
+                  required
+                />
+                <span className="affix">€</span>
+              </div>
+            </div>
+          </div>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Análise Detalhada (Opcional)</label>
-          <textarea
-            name="analysis"
-            value={formData.analysis || ''}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            style={{ ...styles.textarea, minHeight: '140px' }}
-            placeholder="Escreva a justificação para esta aposta..."
-          />
-        </div>
+          <div className="field">
+            <label className="field-label">
+              Mercados <span className="field-hint">— alternativas sugeridas</span>
+            </label>
+            <textarea
+              className="textarea"
+              name="markets"
+              value={formData.markets || ''}
+              onChange={handleInputChange}
+              placeholder="Ex: Resultado Final, Mais de 2.5 Golos, Ambas Marcam..."
+            />
+          </div>
 
-        <label style={styles.checkboxContainer}>
-          <input
-            type="checkbox"
-            name="active"
-            checked={formData.active || false}
-            onChange={handleInputChange}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-          />
-          <span style={{ ...styles.label, color: '#1a1a1a', textAlign: 'left' }}>Esta aposta está ativa e visível?<br></br>[quando começar o jogo ou acabar o período de venda, desativar]</span>
-        </label>
+          <div className="field">
+            <label className="field-label">
+              Análise Detalhada <span className="field-hint">— opcional</span>
+            </label>
+            <textarea
+              className="textarea lg"
+              name="analysis"
+              value={formData.analysis || ''}
+              onChange={handleInputChange}
+              placeholder="Escreve a justificação para esta aposta..."
+            />
+          </div>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Imagem do Bilhete</label>
-          <div style={styles.imageSection}>
-            {formData.image_url ? (
-              <div>
+          <label className={`toggle-card ${active ? 'on' : ''}`}>
+            <input type="checkbox" name="active" checked={active} onChange={handleInputChange} />
+            <span className="switch" />
+            <span className="toggle-text">
+              <span className="toggle-title">
+                {active ? 'Aposta ativa e visível' : 'Aposta desativada'}
+              </span>
+              <span className="toggle-desc">
+                Quando o jogo começar ou acabar o período de venda, desativa aqui.
+              </span>
+            </span>
+          </label>
+
+          <div className="field">
+            <label className="field-label">Imagem do Bilhete</label>
+            <div className="dropzone">
+              {formData.image_url ? (
                 <img
                   key={formData.image_url}
                   src={formData.image_url}
                   alt="Previsualização da aposta"
-                  style={styles.currentImage}
+                  className="dropzone-preview"
                 />
-                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 15px 0' }}>Imagem atual carregada.</p>
+              ) : (
+                <div className="dropzone-empty">
+                  <span className="icon">🖼️</span>
+                  Nenhuma imagem carregada
+                </div>
+              )}
+              <div className="dropzone-divider">
+                <label className="file-btn">
+                  {formData.image_url ? 'Alterar imagem' : 'Carregar imagem'}
+                  <input type="file" accept="image/*" onChange={handleFileChange} />
+                </label>
+                {imageFile && <p className="file-name">{imageFile.name}</p>}
               </div>
-            ) : (
-              <div style={{ padding: '20px 0', color: '#999' }}>Nenhuma imagem carregada.</div>
-            )}
-            <div style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <label style={{ ...styles.label, display: 'block', marginBottom: '10px', color }}>Alterar Imagem</label>
-              <input type="file" accept="image/*" onChange={handleFileChange} style={styles.fileInput} />
             </div>
           </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          style={submitStyle}
-          onMouseOver={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = 'white'; } }}
-          onMouseOut={(e) => { if (!saving) { e.currentTarget.style.backgroundColor = `${color}e6`; e.currentTarget.style.color = 'white'; } }}
-        >
-          {saving ? 'A guardar alterações...' : 'Guardar Dados da Aposta'}
-        </button>
       </form>
+
+      <div className="save-bar">
+        <button type="submit" className="btn-save" disabled={saving} onClick={handleSubmit}>
+          {saving ? (
+            <>
+              <span className="spinner sm" />
+              A guardar...
+            </>
+          ) : (
+            'Guardar Dados da Aposta'
+          )}
+        </button>
+      </div>
     </>
   );
 }
 
 function App() {
   const [activeTab, setActiveTab] = useState<Seller>('pedrito');
+  const current = TABS.find((t) => t.key === activeTab)!;
 
   return (
-    <div style={styles.body}>
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>Painel de Edição -- Apostas</h2>
-          <div style={styles.tabBar}>
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.key;
-              const color = TAB_COLOR[tab.key];
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    padding: '8px 20px',
-                    borderRadius: '8px',
-                    border: isActive ? `2px solid ${color}` : '2px solid #eaeaea',
-                    backgroundColor: isActive ? color : '#f9f9f9',
-                    color: isActive ? '#fff' : '#555',
-                    fontWeight: 600,
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+    <div className="admin">
+      <div className="admin-shell">
+        <header className="admin-header">
+          <p className="admin-eyebrow">Painel de Edição</p>
+          <h1 className="admin-title">Apostas Premium</h1>
+          <p className="admin-subtitle">Escolhe o tipster e atualiza a aposta em venda.</p>
 
-        <SellerForm key={activeTab} seller={activeTab} />
+          <div className="tab-bar">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                className={`tab ${activeTab === tab.key ? 'active' : ''}`}
+                style={{ '--tab-color': tab.color } as React.CSSProperties}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <span className="tab-dot" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <SellerForm key={activeTab} seller={activeTab} color={current.color} />
       </div>
     </div>
   );
